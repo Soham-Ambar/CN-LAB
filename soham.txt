@@ -1,1 +1,14 @@
-cslcskc
+ping google.com
+tracert google.com
+ipconfig  /all
+ipconfig
+netstat -an
+nslookup google.com
+curl http://google.com
+arp -a
+route print
+getmac
+ssh 
+wget https://google.com
+Nslookup -Type=MX google.com
+Test-connection google.com
