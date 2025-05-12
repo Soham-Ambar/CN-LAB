@@ -1,53 +1,56 @@
 import socket
-import os
 
-# Server Configuration
-UDP_IP = "0.0.0.0"  # Listen on all interfaces
-UDP_PORT = 5005
-BUFFER_SIZE = 4096  # Adjust based on network performance
+MAX_SIZE = 1000000
+PORT = 8000
 
-# Create UDP socket
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-server_socket.bind((UDP_IP, UDP_PORT))
+def save_file(file_name, data):
+    with open(file_name, 'wb') as f:
+        f.write(data)
+    print(f"File '{file_name}' received and saved successfully.")
 
-print(f"UDP File Server started on {UDP_IP}:{UDP_PORT}")
+def start_server():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(('0.0.0.0', PORT))
+    print("UDP Server is running and listening on port", PORT)
 
-try:
     while True:
-        # Receive filename (but ignore it for saving purposes)
-        data, addr = server_socket.recvfrom(BUFFER_SIZE)
-        filename = data.decode()
-        print(f"Receiving file: {filename} from {addr}")
+        choice, addr = sock.recvfrom(1)
+        choice = int.from_bytes(choice, byteorder='big')
 
-        # Acknowledge filename reception
-        server_socket.sendto(b"ACK_FILENAME", addr)
+        if choice == 1:
+            # Text file
+            fname, _ = sock.recvfrom(1024)
+            fname = fname.decode()
+            print("TEXT FILE NAME RECEIVED:", fname)
 
-        # Open a predefined file to write (e.g., saved.txt)
-        received_data = False  # Track if any data is received
-        with open("saved.txt", "wb") as file:
-            while True:
-                # Receive data chunks
-                data, addr = server_socket.recvfrom(BUFFER_SIZE)
-                if data == b"EOF":  # End of file signal
-                    break
-                file.write(data)
-                received_data = True  # Mark that data was received
-                # Print the content of the received chunk
-                try:
-                    print(f"Received chunk: {data.decode()}")
-                except UnicodeDecodeError:
-                    print(f"Received chunk (binary data): {data}")
-                # Acknowledge received chunk
-                server_socket.sendto(b"ACK", addr)
+            data, _ = sock.recvfrom(4096)
+            print("TEXT CONTENT RECEIVED:\n", data.decode())
 
-        if not received_data:
-            print(f"Error: No data received for file {filename}. File not saved.")
-            os.remove("saved.txt")  # Delete the empty file
-        else:
-            print(f"File saved as saved.txt successfully.\n")
+            save_file(fname, data)
 
-except KeyboardInterrupt:
-    print("\nServer stopped by user.")
-finally:
-    server_socket.close()
-    print("Socket closed. Exiting...")
+        elif choice == 2:
+            # Audio file
+            fname, _ = sock.recvfrom(1024)
+            fname = fname.decode()
+            print("AUDIO FILE NAME RECEIVED:", fname)
+
+            data, _ = sock.recvfrom(MAX_SIZE)
+            save_file(fname, data)
+
+        elif choice == 3:
+            # Video file
+            fname, _ = sock.recvfrom(1024)
+            fname = fname.decode()
+            print("VIDEO FILE NAME RECEIVED:", fname)
+
+            data, _ = sock.recvfrom(MAX_SIZE)
+            save_file(fname, data)
+
+        elif choice == 4:
+            print("Exiting server...")
+            break
+
+    sock.close()
+
+if __name__ == "__main__":
+    start_server()

@@ -1,48 +1,37 @@
 import socket
-import os
 
-# Server Configuration
-SERVER_IP = "192.168.188.179"  # Change this to the receiver’s IP
-SERVER_PORT = 5005
-BUFFER_SIZE = 4096  # Match with the server
+SERVER_IP = '127.0.0.1'
+PORT = 8000
 
-# Files to send (update paths as needed)
-FILES_TO_SEND = {
-    "soham.txt": "soham.txt"
-}
+def send_file(sock, filepath, addr):
+    try:
+        with open(filepath, 'rb') as f:
+            content = f.read()
+        sock.sendto(filepath.encode(), addr)
+        sock.sendto(content, addr)
+        print("FILE SENT:", filepath)
+    except FileNotFoundError:
+        print("File not found:", filepath)
 
-# Create UDP socket
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+def client():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    addr = (SERVER_IP, PORT)
 
-for label, file_path in FILES_TO_SEND.items():
-    if not os.path.exists(file_path):
-        print(f"File {file_path} not found, skipping.")
-        continue
+    while True:
+        print("\nEnter \n1.TEXT \n2.AUDIO \n3.VIDEO \n4.EXIT")
+        choice = int(input("Choice: "))
+        sock.sendto(choice.to_bytes(1, byteorder='big'), addr)
 
-    print(f"Sending file: {file_path}")
+        if choice in [1, 2, 3]:
+            filepath = input("Enter file name to send: ")
+            send_file(sock, filepath, addr)
+        elif choice == 4:
+            print("Exiting client...")
+            break
+        else:
+            print("Invalid choice")
 
-    # Send filename
-    client_socket.sendto(file_path.encode(), (SERVER_IP, SERVER_PORT))
+    sock.close()
 
-    # Wait for acknowledgment
-    ack, _ = client_socket.recvfrom(BUFFER_SIZE)
-    if ack != b"ACK_FILENAME":
-        print("Error: No ACK from server")
-        continue
-
-    # Open file and send data
-    with open(file_path, "rb") as file:
-        while (chunk := file.read(BUFFER_SIZE)):
-            client_socket.sendto(chunk, (SERVER_IP, SERVER_PORT))
-            # Debugging: Print the chunk being sent
-            print(f"Sent chunk: {chunk.decode(errors='ignore')}")
-            ack, _ = client_socket.recvfrom(BUFFER_SIZE)  # Wait for chunk ACK
-            if ack != b"ACK":
-                print("Error: No ACK for chunk")
-                break
-
-    # Send end-of-file signal
-    client_socket.sendto(b"EOF", (SERVER_IP, SERVER_PORT))
-    print(f"File {file_path} sent successfully.\n")
-
-client_socket.close()
+if __name__ == "__main__":
+    client()
